@@ -1,0 +1,63 @@
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:${MLFLOW_VERSION:-v3.12.0}
+    container_name: mlorch-mlflow
+    environment:
+      MLFLOW_HOST: 0.0.0.0
+      MLFLOW_PORT: ${MLFLOW_PORT}
+    command:
+      - /bin/bash
+      - -c
+      - |
+        mlflow server \
+          --backend-store-uri sqlite:////mlflow/mlflow.db \
+          --artifacts-destination file:///mlflow/artifacts \
+          --serve-artifacts \
+          --host "${MLFLOW_HOST}" \
+          --port "${MLFLOW_PORT}"
+    ports:
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
+    volumes:
+      - mlflow-data:/mlflow
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  airflow:
+    build:
+      context: ./airflow
+      dockerfile: Dockerfile
+    image: mlorch-airflow
+    container_name: mlorch-airflow
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      # Persist scheduler metadata, logs, and standalone admin state between restarts.
+      - airflow-home:/opt/airflow
+      # Live-mount workshop code (overrides paths inside the named volume).
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    restart: unless-stopped
+
+volumes:
+  mlflow-data:
+  airflow-home:
+
+networks:
+  default:
+    name: ml-orchestration-network
