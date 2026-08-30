@@ -238,7 +238,7 @@ def telco_churn_training_pipeline():
             "Approve to register it and set the 'champion' alias."
         ),
         defaults="Approve",
-        response_timeout=timedelta(hours=1),
+        execution_timeout=timedelta(hours=1), #response_timeout=timedelta(hours=1),
     )
 
     @task(outlets=[CHAMPION_MODEL_ASSET])
