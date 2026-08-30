@@ -14,7 +14,8 @@ services:
           --artifacts-destination file:///mlflow/artifacts \
           --serve-artifacts \
           --host "${MLFLOW_HOST}" \
-          --port "${MLFLOW_PORT}"
+          --port "${MLFLOW_PORT}" \
+          --allowed-hosts "*" 
     ports:
       - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     volumes:
@@ -25,7 +26,9 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+          #"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+          "import urllib.request, os; urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"MLFLOW_PORT\"]}/health')", # 👈 changed to 127.0.0.1 + dynamic port
+        
         ]
       interval: 10s
       timeout: 5s
